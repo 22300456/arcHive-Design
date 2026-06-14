@@ -1,0 +1,6 @@
+{
+  "name": "Modern Archive",
+  "description": "A dark-mode-enabled modern archive site displaying images and texts in an animated card grid with robust categorized search.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
