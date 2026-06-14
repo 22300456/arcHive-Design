@@ -76,6 +76,13 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // 50MB Max Limit (50 * 1024 * 1024 bytes)
+      const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+      if (file.size > MAX_SIZE_BYTES) {
+        alert(`⚠️ 파일 크기가 너무 큽니다! (현재 용량: ${(file.size / 1024 / 1024).toFixed(1)}MB)\n웹사이트 안정이 보장되는 최대 50MB 이하의 이미지 또는 PDF만 업로드할 수 있습니다.`);
+        return;
+      }
+
       setFileName(file.name);
       try {
         const compressedBase64 = await compressImage(file);
@@ -213,7 +220,7 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
                         {fileName ? `업로드됨: ${fileName}` : '이미지 또는 PDF 파일 업로드'}
                       </p>
                       <p className="font-mono text-[9px] text-zinc-400 mt-0.5">
-                        PDF, JPEG, PNG, WebP (자동 Base64 변환 저장)
+                        최대 50MB 이미지 & PDF 파일 지원 (초고화질 및 자동압축 최적화)
                       </p>
                       <input
                         ref={fileInputRef}
