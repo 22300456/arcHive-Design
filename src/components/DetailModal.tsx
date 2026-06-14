@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, User, MapPin, Copy, Check, Trash2, ArrowUpRight, FileText, Download } from 'lucide-react';
 import { ArchiveItem } from '../types';
+import { compressImage } from '../utils';
 
 const isPdfFile = (url: string) => {
   return url?.startsWith('data:application/pdf') || url?.endsWith('.pdf') || url?.includes('.pdf?');
@@ -137,15 +138,22 @@ export default function DetailModal({
                           const fileInput = document.createElement('input');
                           fileInput.type = 'file';
                           fileInput.accept = 'image/*,application/pdf';
-                          fileInput.onchange = (e) => {
+                          fileInput.onchange = async (e) => {
                             const file = (e.target as HTMLInputElement).files?.[0];
                             if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                const updated = { ...item, imageUrl: reader.result as string };
+                              try {
+                                const compressedBase64 = await compressImage(file);
+                                const updated = { ...item, imageUrl: compressedBase64 };
                                 onUpdateItem?.(updated);
-                              };
-                              reader.readAsDataURL(file);
+                              } catch (err) {
+                                console.error('Image compression failed inside details, fallback to raw load:', err);
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  const updated = { ...item, imageUrl: reader.result as string };
+                                  onUpdateItem?.(updated);
+                                };
+                                reader.readAsDataURL(file);
+                              }
                             }
                           };
                           fileInput.click();

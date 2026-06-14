@@ -7,6 +7,7 @@ import { ArchiveItem, SortOption } from './types';
 import { INITIAL_ARCHIVE_ITEMS } from './data';
 import { SlidersHorizontal, Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
+import { safeSetLocalStorage } from './utils';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,7 +47,7 @@ export default function App() {
       }
     } else {
       setArchiveItems(INITIAL_ARCHIVE_ITEMS);
-      localStorage.setItem('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
+      safeSetLocalStorage('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
     }
     setIsLoaded(true);
   }, []);
@@ -54,7 +55,7 @@ export default function App() {
   // Save records to localStorage on modify
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('archive-records', JSON.stringify(archiveItems));
+      safeSetLocalStorage('archive-records', JSON.stringify(archiveItems));
     }
   }, [archiveItems, isLoaded]);
 
@@ -76,14 +77,14 @@ export default function App() {
   const handleAddNewItem = (newItem: ArchiveItem) => {
     const updated = [newItem, ...archiveItems];
     setArchiveItems(updated);
-    localStorage.setItem('archive-records', JSON.stringify(updated));
+    safeSetLocalStorage('archive-records', JSON.stringify(updated));
   };
 
   // Delete Item from Archive
   const handleDeleteItem = (id: string) => {
     const updated = archiveItems.filter(item => item.id !== id);
     setArchiveItems(updated);
-    localStorage.setItem('archive-records', JSON.stringify(updated));
+    safeSetLocalStorage('archive-records', JSON.stringify(updated));
     setSelectedItem(null);
   };
 
@@ -91,7 +92,7 @@ export default function App() {
   const handleUpdateItem = (updatedItem: ArchiveItem) => {
     const updated = archiveItems.map(item => item.id === updatedItem.id ? updatedItem : item);
     setArchiveItems(updated);
-    localStorage.setItem('archive-records', JSON.stringify(updated));
+    safeSetLocalStorage('archive-records', JSON.stringify(updated));
     if (selectedItem && selectedItem.id === updatedItem.id) {
       setSelectedItem(updatedItem);
     }
@@ -101,7 +102,7 @@ export default function App() {
   const handleResetToDefaults = () => {
     if (confirm('아카이브를 기본 템플릿 데이터 상태로 초기화할까요? 추가된 카드들은 지워집니다.')) {
       setArchiveItems(INITIAL_ARCHIVE_ITEMS);
-      localStorage.setItem('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
+      safeSetLocalStorage('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
       setSearchQuery('');
       setSelectedCategory('All');
       setSelectedSort('newest');

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Image, Tag, Calendar, User, MapPin, Check, Sparkles, Upload, FileText } from 'lucide-react';
 import { ArchiveItem } from '../types';
 import { CATEGORIES } from '../data';
+import { compressImage } from '../utils';
 
 interface AddCardModalProps {
   isOpen: boolean;
@@ -72,15 +73,21 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
   if (!isOpen) return null;
 
   // Handle uploaded file and convert to Base64 (Data URL)
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFileName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedBase64 = await compressImage(file);
+        setImageUrl(compressedBase64);
+      } catch (err) {
+        console.error('Image compression failed, fallback to raw load:', err);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImageUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
