@@ -190,31 +190,40 @@ export default function App() {
 
   // Add Item to Archive
   const handleAddNewItem = async (newItem: ArchiveItem) => {
+    let finalItem = { ...newItem };
+
+    // Upload base64 image statically if detected
+    if (newItem.imageUrl && newItem.imageUrl.startsWith('data:')) {
+      try {
+        const filename = `${newItem.id}${newItem.imageUrl.startsWith('data:application/pdf') ? '.pdf' : '.jpg'}`;
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename,
+            base64: newItem.imageUrl
+          })
+        });
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          finalItem.imageUrl = data.url;
+          console.log('[Upload] New item image captured statically:', data.url);
+        }
+      } catch (uploadErr) {
+        console.error('[Upload] Failed to upload image to server, fallback to base64:', uploadErr);
+      }
+    }
+
     if (isFirebaseEnabled) {
       try {
-        await setDoc(doc(db, 'archive-records', newItem.id), newItem);
+        // Sanitize undefined fields from item (JSON parse stringify drops undefined properties)
+        const cleanedItem = JSON.parse(JSON.stringify(finalItem));
+        await setDoc(doc(db, 'archive-records', cleanedItem.id), cleanedItem);
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, `archive-records/${newItem.id}`);
       }
     } else {
       try {
-        let finalItem = { ...newItem };
-        // Upload base64 image statically if detected
-        if (newItem.imageUrl && newItem.imageUrl.startsWith('data:')) {
-          const uploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filename: newItem.id + '.jpg',
-              base64: newItem.imageUrl
-            })
-          });
-          if (uploadRes.ok) {
-            const data = await uploadRes.json();
-            finalItem.imageUrl = data.url;
-          }
-        }
-
         const res = await fetch('/api/archive-records', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -228,7 +237,7 @@ export default function App() {
         }
       } catch (err) {
         console.error('API Server sync error, fallback to local state:', err);
-        const updated = [newItem, ...archiveItems];
+        const updated = [finalItem, ...archiveItems];
         setArchiveItems(updated);
         safeSetLocalStorage('archive-records', JSON.stringify(updated));
       }
@@ -266,31 +275,40 @@ export default function App() {
 
   // Update Item in Archive
   const handleUpdateItem = async (updatedItem: ArchiveItem) => {
+    let finalItem = { ...updatedItem };
+
+    // Upload base64 image statically if detected and updated
+    if (updatedItem.imageUrl && updatedItem.imageUrl.startsWith('data:')) {
+      try {
+        const filename = `${updatedItem.id}${updatedItem.imageUrl.startsWith('data:application/pdf') ? '.pdf' : '.jpg'}`;
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename,
+            base64: updatedItem.imageUrl
+          })
+        });
+        if (uploadRes.ok) {
+          const data = await uploadRes.json();
+          finalItem.imageUrl = data.url;
+          console.log('[Upload] Updated image captured statically:', data.url);
+        }
+      } catch (uploadErr) {
+        console.error('[Upload] Failed to upload updated image, fallback to base64:', uploadErr);
+      }
+    }
+
     if (isFirebaseEnabled) {
       try {
-        await setDoc(doc(db, 'archive-records', updatedItem.id), updatedItem);
+        // Sanitize undefined fields from item (JSON parse stringify drops undefined properties)
+        const cleanedItem = JSON.parse(JSON.stringify(finalItem));
+        await setDoc(doc(db, 'archive-records', cleanedItem.id), cleanedItem);
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, `archive-records/${updatedItem.id}`);
       }
     } else {
       try {
-        let finalItem = { ...updatedItem };
-        // Upload base64 image statically if detected and updated
-        if (updatedItem.imageUrl && updatedItem.imageUrl.startsWith('data:')) {
-          const uploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              filename: updatedItem.id + '.jpg',
-              base64: updatedItem.imageUrl
-            })
-          });
-          if (uploadRes.ok) {
-            const data = await uploadRes.json();
-            finalItem.imageUrl = data.url;
-          }
-        }
-
         const res = await fetch(`/api/archive-records/${updatedItem.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -308,13 +326,13 @@ export default function App() {
         }
       } catch (err) {
         console.error('API Server update error, fallback to local:', err);
-        const updated = archiveItems.map(item => item.id === updatedItem.id ? updatedItem : item);
+        const updated = archiveItems.map(item => item.id === finalItem.id ? finalItem : item);
         setArchiveItems(updated);
         safeSetLocalStorage('archive-records', JSON.stringify(updated));
       }
     }
     if (selectedItem && selectedItem.id === updatedItem.id) {
-      setSelectedItem(updatedItem);
+      setSelectedItem(finalItem);
     }
   };
 

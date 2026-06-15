@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 export enum OperationType {
@@ -40,7 +40,10 @@ export let isFirebaseEnabled = false;
 if (firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "") {
   try {
     app = initializeApp(firebaseConfig);
-    db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    // Use initializeFirestore with ignoreUndefinedProperties to handle optional fields correctly
+    db = initializeFirestore(app, {
+      ignoreUndefinedProperties: true
+    }, firebaseConfig.firestoreDatabaseId);
     isFirebaseEnabled = true;
 
     // Validate connection to Firestore as per critical constraint

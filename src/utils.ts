@@ -2,7 +2,7 @@
  * Image compression utility to make high-resolution uploads extremely lightweight
  * and fits easily within browser's 5MB localStorage limits.
  */
-export function compressImage(file: File, maxWidth = 1200, maxHeight = 1205, quality = 0.82): Promise<string> {
+export function compressImage(file: File, maxWidth = 900, maxHeight = 900, quality = 0.65): Promise<string> {
   return new Promise((resolve, reject) => {
     // If it is not an image (e.g., application/pdf), read as default data URL
     if (!file.type.startsWith('image/')) {
