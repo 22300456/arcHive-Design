@@ -277,9 +277,9 @@ export default function AddCardModal({ isOpen, onClose, onSubmit, existingCatego
 
                   {/* Thumbnail Preview Panel */}
                   <div className="sm:col-span-1">
-                    <div className="border border-zinc-200 dark:border-zinc-800/80 rounded-xl aspect-[4/3] sm:aspect-auto sm:h-full p-1 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden">
+                    <div className="border border-zinc-200 dark:border-zinc-800/80 rounded-xl w-full min-h-[140px] p-2 bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden">
                       {imageUrl ? (
-                        <div className="relative w-full h-full rounded-lg overflow-hidden group">
+                        <div className="relative w-full h-full rounded-lg overflow-hidden flex items-center justify-center group">
                           {isPdfFile(imageUrl) ? (
                             <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex flex-col items-center justify-center p-4">
                               <FileText className="h-9 w-9 text-zinc-400 mb-1" />
@@ -291,7 +291,7 @@ export default function AddCardModal({ isOpen, onClose, onSubmit, existingCatego
                             <img
                               src={imageUrl}
                               alt="등록 미리보기"
-                              className="w-full h-full object-cover"
+                              className="w-full h-auto object-contain max-h-[160px] rounded-lg"
                             />
                           )}
                           <button

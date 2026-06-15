@@ -16,6 +16,10 @@ const isPdfFile = (url: string) => {
 export default function ArchiveCard({ item, onClick }: ArchiveCardProps) {
   const isPdf = isPdfFile(item.imageUrl);
 
+    const containerClass = !item.imageUrl || isPdf
+    ? "relative aspect-[4/5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm"
+    : "relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm";
+
   return (
     <motion.article
       layout
@@ -27,7 +31,7 @@ export default function ArchiveCard({ item, onClick }: ArchiveCardProps) {
       className="group relative flex flex-col gap-3 rounded-xl overflow-hidden bg-transparent cursor-pointer transition-all duration-300"
     >
       {/* Sleek aspect container with deep gradient cover */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+      <div className={containerClass}>
         {!item.imageUrl ? (
           <div className="h-full w-full bg-zinc-50 dark:bg-zinc-950/40 flex flex-col items-center justify-center p-6 text-center select-none">
             <div className="p-2.5 bg-zinc-200/40 dark:bg-zinc-900 rounded-lg text-zinc-400 dark:text-zinc-600 mb-2">
@@ -54,7 +58,7 @@ export default function ArchiveCard({ item, onClick }: ArchiveCardProps) {
             src={item.imageUrl}
             alt={item.title}
             referrerPolicy="no-referrer"
-            className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+            className="w-full h-auto block object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
           />
         )}
         

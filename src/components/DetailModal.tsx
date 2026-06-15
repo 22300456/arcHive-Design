@@ -569,12 +569,12 @@ export default function DetailModal({
                           </div>
                         </div>
                       ) : (
-                        <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] max-h-[520px] sm:max-h-[600px] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-md">
-                          {/* Pristine high-quality image filling available space without distortion or gradient overlays */}
+                        <div className="relative w-full overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center">
+                          {/* Pristine high-quality image presenting available ratio without cropping or distortion */}
                           <img
                             src={item.imageUrl}
                             alt={item.title}
-                            className="w-full h-full object-cover rounded-xl"
+                            className="w-full h-auto block object-contain rounded-xl max-h-[75vh]"
                           />
                           <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
                             <button
