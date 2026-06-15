@@ -1,0 +1,34 @@
+{
+  "entities": {
+    "ArchiveItem": {
+      "title": "ArchiveItem",
+      "description": "An item saved in the archive with detailed metadata and an image.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "date": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "author": { "type": "string" },
+        "location": { "type": "string" },
+        "usedFonts": { "type": "string" },
+        "colorCode": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "category", "tags", "date", "createdAt"]
+    }
+  },
+  "firestore": {
+    "archive-records": {
+      "schema": "ArchiveItem",
+      "description": "Collection of all curated archive cards"
+    }
+  }
+}

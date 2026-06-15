@@ -14,6 +14,7 @@ interface HeaderProps {
   toggleDarkMode: () => void;
   onAddClick: () => void;
   totalCount: number;
+  categories: string[];
 }
 
 export default function Header({
@@ -27,6 +28,7 @@ export default function Header({
   toggleDarkMode,
   onAddClick,
   totalCount,
+  categories,
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-200/80 bg-white/70 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/70 transition-all duration-300">
@@ -37,7 +39,7 @@ export default function Header({
           <div className="flex items-center justify-between md:justify-start">
             <div className="flex items-center gap-3">
               <div>
-                <span className="text-lg font-bold tracking-wider text-zinc-400 dark:text-zinc-500 font-display select-none">
+                <span className="text-lg font-bold tracking-wider text-zinc-400 dark:text-zinc-505 font-display select-none">
                   ARC<span className="text-zinc-950 dark:text-zinc-50 font-black text-2xl tracking-normal">H</span>IVE
                 </span>
               </div>
@@ -59,14 +61,14 @@ export default function Header({
           <div className="flex justify-center w-full">
             <div className="relative w-full max-w-md">
               <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center">
-                <Search className="h-4 w-4 text-zinc-400 dark:text-zinc-500" />
+                <Search className="h-4 w-4 text-zinc-400 dark:text-zinc-505" />
               </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search archives, collections, artifacts..."
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-full py-2 pl-10 pr-9 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:ring-zinc-600 transition-all duration-200"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-full py-2 pl-10 pr-9 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:bg-zinc-900 dark:border-zinc-808 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:ring-zinc-600 transition-all duration-200"
               />
               {searchQuery && (
                 <button
@@ -95,7 +97,7 @@ export default function Header({
           
           {/* Sliding category selections */}
           <div className="flex flex-wrap items-center gap-6 overflow-x-auto py-1.5 scrollbar-none">
-            {CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const active = selectedCategory === cat;
               return (
                 <button

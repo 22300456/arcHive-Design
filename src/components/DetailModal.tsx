@@ -16,6 +16,7 @@ interface DetailModalProps {
   onUpdateItem?: (updatedItem: ArchiveItem) => void;
   allArchiveItems: ArchiveItem[];
   onSelectRelated: (item: ArchiveItem) => void;
+  existingCategories: string[];
 }
 
 export default function DetailModal({
@@ -25,6 +26,7 @@ export default function DetailModal({
   onUpdateItem,
   allArchiveItems,
   onSelectRelated,
+  existingCategories,
 }: DetailModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -50,6 +52,8 @@ export default function DetailModal({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editCategory, setEditCategory] = useState('Plane');
+  const [editCustomCategory, setEditCustomCategory] = useState('');
+  const [editShowCustomInput, setEditShowCustomInput] = useState(false);
   const [editDate, setEditDate] = useState('');
   const [editAuthor, setEditAuthor] = useState('');
   const [editLocation, setEditLocation] = useState('');
@@ -76,6 +80,8 @@ export default function DetailModal({
       setEditTags(item.tags.join(', '));
       setEditImageUrl(item.imageUrl);
       setEditFileName('');
+      setEditCustomCategory('');
+      setEditShowCustomInput(false);
       setIsEditing(false); // Reset to view mode on change
     }
   }, [item]);
@@ -90,9 +96,24 @@ export default function DetailModal({
     });
   };
 
+  const handleEditCategoryChange = (val: string) => {
+    if (val === '__custom__') {
+      setEditShowCustomInput(true);
+    } else {
+      setEditShowCustomInput(false);
+      setEditCategory(val);
+    }
+  };
+
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTitle || !editDescription) return;
+
+    const finalCategory = editShowCustomInput ? editCustomCategory.trim() : editCategory;
+    if (!finalCategory) {
+      alert('카테고리를 입력하거나 선택해 주세요.');
+      return;
+    }
 
     const parsedTags = editTags
       .split(',')
@@ -102,7 +123,7 @@ export default function DetailModal({
     const updatedItem: ArchiveItem = {
       ...item,
       title: editTitle,
-      category: editCategory,
+      category: finalCategory,
       date: editDate,
       author: editAuthor.trim() || undefined,
       location: editLocation.trim() || undefined,
@@ -110,7 +131,7 @@ export default function DetailModal({
       content: editContent.trim() || undefined,
       usedFonts: editUsedFonts.trim() || undefined,
       colorCode: editColorCode.trim() || undefined,
-      tags: parsedTags.length ? parsedTags : [editCategory],
+      tags: parsedTags.length ? parsedTags : [finalCategory],
       imageUrl: editImageUrl,
     };
 
@@ -219,18 +240,40 @@ export default function DetailModal({
                           카테고리 <span className="text-rose-500">*</span>
                         </label>
                         <select
-                          value={editCategory}
-                          onChange={(e) => setEditCategory(e.target.value)}
-                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3.5 py-2 text-sm text-zinc-900 dark:text-white focus:border-zinc-900 focus:outline-none dark:focus:border-zinc-100/40 transition-all font-sans cursor-pointer"
+                          value={editShowCustomInput ? '__custom__' : editCategory}
+                          onChange={(e) => handleEditCategoryChange(e.target.value)}
+                          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-805 bg-white dark:bg-zinc-950 px-3.5 py-2 text-sm text-zinc-900 dark:text-white focus:border-zinc-900 focus:outline-none dark:focus:border-zinc-100/40 transition-all font-sans cursor-pointer"
                         >
-                          {CATEGORIES.filter(c => c !== 'All').map((cat) => (
+                          {existingCategories.map((cat) => (
                             <option key={cat} value={cat}>
                               {cat}
                             </option>
                           ))}
+                          <option value="__custom__" className="font-semibold text-zinc-900 dark:text-zinc-100">+ 직접 입력...</option>
                         </select>
                       </div>
                     </div>
+
+                    {/* Custom Category Input if selected in edit view */}
+                    {editShowCustomInput && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800 space-y-1"
+                      >
+                        <label className="block text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-400">
+                          직접 입력할 카테고리명 *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={editCustomCategory}
+                          onChange={(e) => setEditCustomCategory(e.target.value)}
+                          placeholder="새로운 카테고리명을 직접 기입하세요"
+                          className="w-full rounded-lg border border-zinc-200 bg-white dark:bg-zinc-950 px-3.5 py-2 text-sm text-zinc-900 dark:text-white focus:border-zinc-900 focus:outline-none dark:focus:border-zinc-100/40 transition-all font-sans"
+                        />
+                      </motion.div>
+                    )}
 
                     {/* Image/PDF file upload */}
                     <div>
@@ -526,13 +569,24 @@ export default function DetailModal({
                           </div>
                         </div>
                       ) : (
-                        <div className="relative w-full h-auto min-h-[300px] flex items-center justify-center group/img">
+                        <div className="relative w-full h-auto min-h-[320px] sm:min-h-[400px] flex items-center justify-center overflow-hidden rounded-xl group/img">
+                          {/* Ambient blurred backdrop image to eliminate hollow empty space around image */}
+                          <div className="absolute inset-0 select-none pointer-events-none overflow-hidden scale-110">
+                            <img
+                              src={item.imageUrl}
+                              alt=""
+                              className="w-full h-full object-cover blur-2xl opacity-40 dark:opacity-55"
+                            />
+                            <div className="absolute inset-0 bg-white/20 dark:bg-zinc-950/40 backdrop-blur-3xs" />
+                          </div>
+
+                          {/* Sharp original foreground image */}
                           <img
                             src={item.imageUrl}
                             alt={item.title}
-                            className="w-full h-auto object-contain max-h-[520px] sm:max-h-[600px]"
+                            className="z-10 max-w-full h-auto object-contain max-h-[520px] sm:max-h-[600px] rounded-lg shadow-lg relative my-2 px-4"
                           />
-                          <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                          <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => {

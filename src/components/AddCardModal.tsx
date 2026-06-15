@@ -9,6 +9,7 @@ interface AddCardModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (item: ArchiveItem) => void;
+  existingCategories: string[];
 }
 
 const PRESET_IMAGES = [
@@ -38,9 +39,11 @@ const isPdfFile = (url: string) => {
   return url?.startsWith('data:application/pdf') || url?.endsWith('.pdf') || url?.includes('.pdf?');
 };
 
-export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModalProps) {
+export default function AddCardModal({ isOpen, onClose, onSubmit, existingCategories }: AddCardModalProps) {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Architecture');
+  const [category, setCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [description, setDescription] = useState('');
   const [usedFonts, setUsedFonts] = useState('');
@@ -57,7 +60,9 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
   useEffect(() => {
     if (isOpen) {
       setTitle('');
-      setCategory('Architecture');
+      setCategory(existingCategories && existingCategories.length > 0 ? existingCategories[0] : 'Plane');
+      setCustomCategory('');
+      setShowCustomInput(false);
       setImageUrl('');
       setDescription('');
       setUsedFonts('');
@@ -68,7 +73,7 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
       setLocation('');
       setFileName('');
     }
-  }, [isOpen]);
+  }, [isOpen, existingCategories]);
 
   if (!isOpen) return null;
 
@@ -98,9 +103,24 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
     }
   };
 
+  const handleCategoryChange = (val: string) => {
+    if (val === '__custom__') {
+      setShowCustomInput(true);
+    } else {
+      setShowCustomInput(false);
+      setCategory(val);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description) return;
+
+    const finalCategory = showCustomInput ? customCategory.trim() : category;
+    if (!finalCategory) {
+      alert('카테고리를 입력하거나 선택해 주세요.');
+      return;
+    }
 
     const tags = tagsInput
       .split(',')
@@ -114,8 +134,8 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
       usedFonts: usedFonts.trim() || undefined,
       colorCode: colorCode.trim() || undefined,
       imageUrl: imageUrl || PRESET_IMAGES[0].url,
-      category,
-      tags: tags.length ? tags : [category],
+      category: finalCategory,
+      tags: tags.length ? tags : [finalCategory],
       date,
       createdAt: Date.now(),
       author: author.trim() || undefined,
@@ -174,15 +194,16 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
                     카테고리 *
                   </label>
                   <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    value={showCustomInput ? '__custom__' : category}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                     className="w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 focus:border-zinc-900 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-350 dark:focus:border-white dark:focus:bg-zinc-950 transition-colors cursor-pointer"
                   >
-                    {CATEGORIES.filter((c) => c !== 'All').map((cat) => (
+                    {existingCategories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
                       </option>
                     ))}
+                    <option value="__custom__" className="font-semibold text-zinc-900 dark:text-zinc-100">+ 직접 입력...</option>
                   </select>
                 </div>
                 
@@ -200,6 +221,27 @@ export default function AddCardModal({ isOpen, onClose, onSubmit }: AddCardModal
                   />
                 </div>
               </div>
+
+              {/* Custom Category Input if selected */}
+              {showCustomInput && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-zinc-50 dark:bg-zinc-900/60 p-4 rounded-xl border border-zinc-200/60 dark:border-zinc-800/80 space-y-1.5"
+                >
+                  <label className="block font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                    직접 입력할 카테고리명 *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="예: Architecture, Nature 등 입력한 가치 그대로 보존됩니다"
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none dark:border-zinc-805 dark:bg-zinc-950 dark:text-white dark:focus:border-white transition-all font-sans"
+                  />
+                </motion.div>
+              )}
 
               {/* Cover presets AND Image Upload file field / or Custom Remote URL */}
               <div>

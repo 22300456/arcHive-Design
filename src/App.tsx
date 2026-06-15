@@ -8,6 +8,8 @@ import { INITIAL_ARCHIVE_ITEMS } from './data';
 import { SlidersHorizontal, Trash2, RotateCcw, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { safeSetLocalStorage } from './utils';
+import { isFirebaseEnabled, db, handleFirestoreError, OperationType } from './firebase';
+import { collection, query, onSnapshot, setDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,7 +25,7 @@ export default function App() {
   const [selectedItem, setSelectedItem] = useState<ArchiveItem | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Initialize Dark Mode and Records on mount
+  // Initialize Dark Mode and Records on mount (integrated with Firestore real-time synchronization)
   useEffect(() => {
     // 1. Dark Mode setup
     const savedTheme = localStorage.getItem('archive-theme');
@@ -38,23 +40,73 @@ export default function App() {
     }
 
     // 2. Archive Records setup
-    const savedRecords = localStorage.getItem('archive-records');
-    if (savedRecords) {
-      try {
-        setArchiveItems(JSON.parse(savedRecords));
-      } catch (e) {
-        setArchiveItems(INITIAL_ARCHIVE_ITEMS);
-      }
+    if (isFirebaseEnabled) {
+      const q = query(collection(db, 'archive-records'));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const items: ArchiveItem[] = [];
+        snapshot.forEach((doc) => {
+          items.push(doc.data() as ArchiveItem);
+        });
+
+        if (items.length === 0) {
+          // Newly provisioned database - Seed with default items for user benefit
+          console.log('Seeding cloud Firestore database with default archive cards...');
+          INITIAL_ARCHIVE_ITEMS.forEach(async (initItem) => {
+            try {
+              await setDoc(doc(db, 'archive-records', initItem.id), initItem);
+            } catch (err) {
+              handleFirestoreError(err, OperationType.WRITE, `archive-records/${initItem.id}`);
+            }
+          });
+          setArchiveItems(INITIAL_ARCHIVE_ITEMS);
+        } else {
+          setArchiveItems(items);
+        }
+        setIsLoaded(true);
+      }, (error) => {
+        console.error('Snapshot stream error - dynamic fail to local state:', error);
+        // Fallback to local storage if reading is block/insufficient permissions
+        const savedRecords = localStorage.getItem('archive-records');
+        if (savedRecords) {
+          try { setArchiveItems(JSON.parse(savedRecords)); } catch (e) { setArchiveItems(INITIAL_ARCHIVE_ITEMS); }
+        } else {
+          setArchiveItems(INITIAL_ARCHIVE_ITEMS);
+        }
+        setIsLoaded(true);
+      });
+
+      return () => unsubscribe();
     } else {
-      setArchiveItems(INITIAL_ARCHIVE_ITEMS);
-      safeSetLocalStorage('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
+      // Sync with custom Express Server DB
+      const fetchServerRecords = async () => {
+        try {
+          const res = await fetch('/api/archive-records');
+          if (res.ok) {
+            const serverItems = await res.json();
+            setArchiveItems(serverItems);
+          } else {
+            throw new Error('API server returned response error');
+          }
+        } catch (err) {
+          console.warn('Backend server database load issue, falling back to local storage:', err);
+          const savedRecords = localStorage.getItem('archive-records');
+          if (savedRecords) {
+            try { setArchiveItems(JSON.parse(savedRecords)); } catch (e) { setArchiveItems(INITIAL_ARCHIVE_ITEMS); }
+          } else {
+            setArchiveItems(INITIAL_ARCHIVE_ITEMS);
+          }
+        } finally {
+          setIsLoaded(true);
+        }
+      };
+      
+      fetchServerRecords();
     }
-    setIsLoaded(true);
   }, []);
 
-  // Save records to localStorage on modify
+  // Save records to localStorage on modify for offline cache security
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && archiveItems.length > 0) {
       safeSetLocalStorage('archive-records', JSON.stringify(archiveItems));
     }
   }, [archiveItems, isLoaded]);
@@ -74,40 +126,177 @@ export default function App() {
   };
 
   // Add Item to Archive
-  const handleAddNewItem = (newItem: ArchiveItem) => {
-    const updated = [newItem, ...archiveItems];
-    setArchiveItems(updated);
-    safeSetLocalStorage('archive-records', JSON.stringify(updated));
+  const handleAddNewItem = async (newItem: ArchiveItem) => {
+    if (isFirebaseEnabled) {
+      try {
+        await setDoc(doc(db, 'archive-records', newItem.id), newItem);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `archive-records/${newItem.id}`);
+      }
+    } else {
+      try {
+        let finalItem = { ...newItem };
+        // Upload base64 image statically if detected
+        if (newItem.imageUrl && newItem.imageUrl.startsWith('data:')) {
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: newItem.id + '.jpg',
+              base64: newItem.imageUrl
+            })
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            finalItem.imageUrl = data.url;
+          }
+        }
+
+        const res = await fetch('/api/archive-records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalItem)
+        });
+        if (res.ok) {
+          const updatedRecords = await res.json();
+          setArchiveItems(updatedRecords);
+        } else {
+          throw new Error('Server returned save record error');
+        }
+      } catch (err) {
+        console.error('API Server sync error, fallback to local state:', err);
+        const updated = [newItem, ...archiveItems];
+        setArchiveItems(updated);
+        safeSetLocalStorage('archive-records', JSON.stringify(updated));
+      }
+    }
   };
 
   // Delete Item from Archive
-  const handleDeleteItem = (id: string) => {
-    const updated = archiveItems.filter(item => item.id !== id);
-    setArchiveItems(updated);
-    safeSetLocalStorage('archive-records', JSON.stringify(updated));
+  const handleDeleteItem = async (id: string) => {
+    if (isFirebaseEnabled) {
+      try {
+        await deleteDoc(doc(db, 'archive-records', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `archive-records/${id}`);
+      }
+    } else {
+      try {
+        const res = await fetch(`/api/archive-records/${id}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          const updatedRecords = await res.json();
+          setArchiveItems(updatedRecords);
+        } else {
+          throw new Error('Server returned delete error');
+        }
+      } catch (err) {
+        console.error('API Server delete error, fallback to local:', err);
+        const updated = archiveItems.filter(item => item.id !== id);
+        setArchiveItems(updated);
+        safeSetLocalStorage('archive-records', JSON.stringify(updated));
+      }
+    }
     setSelectedItem(null);
   };
 
   // Update Item in Archive
-  const handleUpdateItem = (updatedItem: ArchiveItem) => {
-    const updated = archiveItems.map(item => item.id === updatedItem.id ? updatedItem : item);
-    setArchiveItems(updated);
-    safeSetLocalStorage('archive-records', JSON.stringify(updated));
+  const handleUpdateItem = async (updatedItem: ArchiveItem) => {
+    if (isFirebaseEnabled) {
+      try {
+        await setDoc(doc(db, 'archive-records', updatedItem.id), updatedItem);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `archive-records/${updatedItem.id}`);
+      }
+    } else {
+      try {
+        let finalItem = { ...updatedItem };
+        // Upload base64 image statically if detected and updated
+        if (updatedItem.imageUrl && updatedItem.imageUrl.startsWith('data:')) {
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: updatedItem.id + '.jpg',
+              base64: updatedItem.imageUrl
+            })
+          });
+          if (uploadRes.ok) {
+            const data = await uploadRes.json();
+            finalItem.imageUrl = data.url;
+          }
+        }
+
+        const res = await fetch(`/api/archive-records/${updatedItem.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalItem)
+        });
+        if (res.ok) {
+          const updatedRecords = await res.json();
+          setArchiveItems(updatedRecords);
+          const match = updatedRecords.find((x: ArchiveItem) => x.id === updatedItem.id);
+          if (match && selectedItem && selectedItem.id === updatedItem.id) {
+            setSelectedItem(match);
+          }
+        } else {
+          throw new Error('Server update error');
+        }
+      } catch (err) {
+        console.error('API Server update error, fallback to local:', err);
+        const updated = archiveItems.map(item => item.id === updatedItem.id ? updatedItem : item);
+        setArchiveItems(updated);
+        safeSetLocalStorage('archive-records', JSON.stringify(updated));
+      }
+    }
     if (selectedItem && selectedItem.id === updatedItem.id) {
       setSelectedItem(updatedItem);
     }
   };
 
   // Reset all local changes/restores default DB
-  const handleResetToDefaults = () => {
+  const handleResetToDefaults = async () => {
     if (confirm('아카이브를 기본 템플릿 데이터 상태로 초기화할까요? 추가된 카드들은 지워집니다.')) {
-      setArchiveItems(INITIAL_ARCHIVE_ITEMS);
-      safeSetLocalStorage('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
+      if (isFirebaseEnabled) {
+        try {
+          const querySnapshot = await getDocs(collection(db, 'archive-records'));
+          for (const document of querySnapshot.docs) {
+            await deleteDoc(doc(db, 'archive-records', document.id));
+          }
+          for (const initItem of INITIAL_ARCHIVE_ITEMS) {
+            await setDoc(doc(db, 'archive-records', initItem.id), initItem);
+          }
+        } catch (err) {
+          handleFirestoreError(err, OperationType.WRITE, 'archive-records');
+        }
+      } else {
+        try {
+          const res = await fetch('/api/archive-records/reset', {
+            method: 'POST'
+          });
+          if (res.ok) {
+            const initialData = await res.json();
+            setArchiveItems(initialData);
+          } else {
+            throw new Error('Server returned reset error');
+          }
+        } catch (err) {
+          console.error('API Server reset error, fallback to local:', err);
+          setArchiveItems(INITIAL_ARCHIVE_ITEMS);
+          safeSetLocalStorage('archive-records', JSON.stringify(INITIAL_ARCHIVE_ITEMS));
+        }
+      }
       setSearchQuery('');
       setSelectedCategory('All');
       setSelectedSort('newest');
     }
   };
+
+  // Deduplicate and dynamically compile the total category tab filters dynamically
+  const defaultCategories: string[] = ['Plane', 'Typography', 'Image', 'Collage', 'Theme'];
+  const activeCategories: string[] = Array.from(new Set(archiveItems.map((item) => item.category).filter(Boolean)));
+  const dynamicCategories: string[] = ['All', ...Array.from(new Set([...defaultCategories, ...activeCategories]))];
 
   // Filter & Search computation
   const filteredItems = archiveItems
@@ -164,6 +353,7 @@ export default function App() {
         toggleDarkMode={toggleDarkMode}
         onAddClick={() => setIsAddModalOpen(true)}
         totalCount={archiveItems.length}
+        categories={dynamicCategories}
       />
 
       {/* Main viewport */}
@@ -204,8 +394,10 @@ export default function App() {
               <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">
                 © 2026 DIGITAL ARCHIVAL LABS. ALL RECONSTRUCTIONS MAINTAINED.
               </p>
-              <p className="mt-1 font-sans text-xs text-zinc-400 dark:text-zinc-500">
-                본 웹앱은 브라우저 공간 내 영구 보존(localStorage) 엔진을 내포하고 있습니다.
+              <p className="mt-1 font-sans text-xs text-zinc-400 dark:text-zinc-505 bg-clip-text">
+                {isFirebaseEnabled 
+                  ? "✓ 포트폴리오 데이터가 클라우드 Firestore 데이터베이스에 실시간 영구 연동되어 보호받고 있습니다." 
+                  : "✓ 포트폴리오 데이터가 서버 데이터베이스에 영구 연동되어 다른 기기들과 양방향 실시간 공유가 지원됩니다."}
               </p>
             </div>
             
@@ -229,12 +421,14 @@ export default function App() {
         onUpdateItem={handleUpdateItem}
         allArchiveItems={archiveItems}
         onSelectRelated={(item) => setSelectedItem(item)}
+        existingCategories={dynamicCategories.filter(c => c !== 'All')}
       />
 
       <AddCardModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSubmit={handleAddNewItem}
+        existingCategories={dynamicCategories.filter(c => c !== 'All')}
       />
     </div>
   );

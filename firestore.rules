@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default dry-run catch-all: deny all unspecified paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ID Format Validation
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper functions for Resource inspection
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Strict Schema Enforcement validation helper
+    function isValidArchiveItem(data) {
+      return data.id is string
+        && data.id.size() <= 128
+        && data.title is string
+        && data.title.size() <= 250
+        && data.description is string
+        && data.description.size() <= 3000
+        && data.category is string
+        && data.category.size() <= 100
+        && data.date is string
+        && data.date.size() <= 30
+        && data.tags is list
+        && data.tags.size() <= 20
+        && data.createdAt is int
+        && (!('author' in data) || (data.author is string && data.author.size() <= 150))
+        && (!('location' in data) || (data.location is string && data.location.size() <= 200))
+        && (!('content' in data) || (data.content is string && data.content.size() <= 15000))
+        && (!('usedFonts' in data) || (data.usedFonts is string && data.usedFonts.size() <= 300))
+        && (!('colorCode' in data) || (data.colorCode is string && data.colorCode.size() <= 300))
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 67108864)); // Up to 64MB Base64 string bounds
+    }
+
+    // Archive records collection matching rules
+    match /archive-records/{itemId} {
+      allow read, list: if true;
+      allow create: if isValidArchiveItem(incoming()) && isValidId(itemId);
+      allow update: if isValidArchiveItem(incoming());
+      allow delete: if true;
+    }
+  }
+}
