@@ -569,22 +569,12 @@ export default function DetailModal({
                           </div>
                         </div>
                       ) : (
-                        <div className="relative w-full h-auto min-h-[320px] sm:min-h-[400px] flex items-center justify-center overflow-hidden rounded-xl group/img">
-                          {/* Ambient blurred backdrop image to eliminate hollow empty space around image */}
-                          <div className="absolute inset-0 select-none pointer-events-none overflow-hidden scale-110">
-                            <img
-                              src={item.imageUrl}
-                              alt=""
-                              className="w-full h-full object-cover blur-2xl opacity-40 dark:opacity-55"
-                            />
-                            <div className="absolute inset-0 bg-white/20 dark:bg-zinc-950/40 backdrop-blur-3xs" />
-                          </div>
-
-                          {/* Sharp original foreground image */}
+                        <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] max-h-[520px] sm:max-h-[600px] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-md">
+                          {/* Pristine high-quality image filling available space without distortion or gradient overlays */}
                           <img
                             src={item.imageUrl}
                             alt={item.title}
-                            className="z-10 max-w-full h-auto object-contain max-h-[520px] sm:max-h-[600px] rounded-lg shadow-lg relative my-2 px-4"
+                            className="w-full h-full object-cover rounded-xl"
                           />
                           <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2">
                             <button

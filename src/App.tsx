@@ -101,6 +101,69 @@ export default function App() {
       };
       
       fetchServerRecords();
+
+      // Secure and resilient WebSocket connection for instantaneous sync across all devices
+      let socket: WebSocket | null = null;
+      let reconnectTimeoutId: any = null;
+      let lockReconnect = false;
+
+      const connectWS = () => {
+        if (lockReconnect) return;
+        lockReconnect = true;
+
+        try {
+          const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsUrl = `${wsProtocol}//${window.location.host}`;
+          console.log('[WebSocket] Connecting client sync socket:', wsUrl);
+          socket = new WebSocket(wsUrl);
+
+          socket.onopen = () => {
+            console.log('[WebSocket] Sync established successfully');
+            lockReconnect = false;
+          };
+
+          socket.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data && data.type === 'update' && Array.isArray(data.records)) {
+                console.log('[WebSocket] Real-time sync update received:', data.records.length, 'cards updated');
+                setArchiveItems(data.records);
+              }
+            } catch (err) {
+              console.error('[WebSocket] Parsing message from server failed:', err);
+            }
+          };
+
+          socket.onclose = () => {
+            console.log('[WebSocket] Connection closed. Reconnecting shortly...');
+            lockReconnect = false;
+            reconnectTimeoutId = setTimeout(connectWS, 4000);
+          };
+
+          socket.onerror = (err) => {
+            console.error('[WebSocket] Connection error:', err);
+            socket?.close();
+          };
+        } catch (e) {
+          console.error('[WebSocket] Initialization error:', e);
+          lockReconnect = false;
+          reconnectTimeoutId = setTimeout(connectWS, 5000);
+        }
+      };
+
+      connectWS();
+
+      // Return cleanup handler to correctly clean memory and connections on component re-mount
+      return () => {
+        if (socket) {
+          socket.onclose = null;
+          socket.onerror = null;
+          socket.close();
+        }
+        if (reconnectTimeoutId) {
+          clearTimeout(reconnectTimeoutId);
+        }
+      };
     }
   }, []);
 

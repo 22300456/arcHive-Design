@@ -58,20 +58,17 @@ export default function ArchiveCard({ item, onClick }: ArchiveCardProps) {
           />
         )}
         
-        {/* Soft elegant gradient shadow on lower side */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-zinc-950/80 via-zinc-950/35 to-transparent pointer-events-none transition-opacity duration-300 opacity-90 group-hover:opacity-100" />
-
-        {/* Brand/Category Tag — Glassmorphic Sleek Badge */}
-        <span className="absolute top-3.5 left-3.5 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded font-mono text-[9px] uppercase tracking-widest font-bold text-white border border-white/10 shadow-sm select-none">
+        {/* Brand/Category Tag — Classic Sleek Solid Badge */}
+        <span className="absolute top-3.5 left-3.5 bg-zinc-950/75 backdrop-blur-xs px-2.5 py-1 rounded font-mono text-[9px] uppercase tracking-widest font-bold text-white border border-white/10 shadow-sm select-none">
           {item.category}
         </span>
 
-        {/* Lower Tags superimposed over the gradient overlay inside the image container */}
+        {/* Lower Tags superimposed cleanly inside the image container */}
         <div className="absolute bottom-3.5 left-3.5 flex flex-wrap gap-1.5 max-w-[80%]">
           {item.tags.slice(0, 2).map((tag, idx) => (
             <span
               key={idx}
-              className="px-2 py-0.5 rounded bg-zinc-950/40 text-white border border-white/5 font-mono text-[8.5px] tracking-wider"
+              className="px-2 py-0.5 rounded bg-zinc-950/75 text-white border border-white/10 font-mono text-[8.5px] tracking-wider backdrop-blur-3xs"
             >
               #{tag}
             </span>

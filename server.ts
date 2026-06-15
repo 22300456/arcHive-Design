@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
+import { WebSocketServer, WebSocket } from 'ws';
 import { INITIAL_ARCHIVE_ITEMS } from './src/data';
 
 const app = express();
@@ -46,6 +47,23 @@ function saveRecords(records: any[]) {
   }
 }
 
+// Global set to keep track of active WebSocket clients for real-time synchronization
+const wssClients = new Set<WebSocket>();
+
+// Function to broadcast updated records to all active connected clients
+function broadcastRecords(records: any[]) {
+  const payload = JSON.stringify({ type: 'update', records });
+  for (const client of wssClients) {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(payload);
+      } catch (err) {
+        console.error('[WebSocket] Failed to send update to client:', err);
+      }
+    }
+  }
+}
+
 // 1. API: Get all archive records
 app.get('/api/archive-records', (req, res) => {
   const records = loadRecords();
@@ -66,6 +84,7 @@ app.post('/api/archive-records', (req, res) => {
     const updated = [newItem, ...filtered];
     
     saveRecords(updated);
+    broadcastRecords(updated);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -83,6 +102,7 @@ app.put('/api/archive-records/:id', (req, res) => {
     const records = loadRecords();
     const updated = records.map(item => item.id === id ? updatedItem : item);
     saveRecords(updated);
+    broadcastRecords(updated);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -96,6 +116,7 @@ app.delete('/api/archive-records/:id', (req, res) => {
     const records = loadRecords();
     const updated = records.filter(item => item.id !== id);
     saveRecords(updated);
+    broadcastRecords(updated);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -117,6 +138,7 @@ app.post('/api/archive-records/reset', (req, res) => {
       console.warn('Could not clear uploads folder completely:', e);
     }
 
+    broadcastRecords(INITIAL_ARCHIVE_ITEMS);
     res.json(INITIAL_ARCHIVE_ITEMS);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -173,8 +195,33 @@ async function setupServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server] Portfolio backend listening securely on port http://localhost:${PORT}`);
+  });
+
+  // Attach WebSocketServer to standard port 3000 HTTP server
+  const wss = new WebSocketServer({ server });
+
+  wss.on('connection', (ws) => {
+    console.log('[WebSocket] Client connected dynamically');
+    wssClients.add(ws);
+
+    // Immediately push current records in database to the newly connected user
+    try {
+      ws.send(JSON.stringify({ type: 'update', records: loadRecords() }));
+    } catch (e) {
+      console.error('[WebSocket] Failed to send initial records on connection:', e);
+    }
+
+    ws.on('close', () => {
+      console.log('[WebSocket] Client disconnected');
+      wssClients.delete(ws);
+    });
+
+    ws.on('error', (err) => {
+      console.error('[WebSocket] WebSocket connection error:', err);
+      wssClients.delete(ws);
+    });
   });
 }
 

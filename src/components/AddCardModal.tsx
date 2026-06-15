@@ -343,7 +343,7 @@ export default function AddCardModal({ isOpen, onClose, onSubmit, existingCatego
                             alt={preset.name}
                             className="h-full w-full object-cover"
                           />
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/80 to-transparent p-1 pt-3">
+                          <div className="absolute inset-x-0 bottom-0 bg-zinc-950/70 p-1 py-1.5">
                             <p className="font-sans text-[9px] text-white truncate font-medium">
                               {preset.name}
                             </p>
