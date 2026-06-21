@@ -15,8 +15,9 @@ const isPdfFile = (url: string) => {
 
 export default function ArchiveCard({ item, onClick }: ArchiveCardProps) {
   const isPdf = isPdfFile(item.imageUrl);
+  const isEvicted = !item.imageUrl || item.imageUrl === 'placeholder-base64-cache-evicted' || item.imageUrl.includes('cache-evicted');
 
-    const containerClass = !item.imageUrl || isPdf
+  const containerClass = isEvicted || isPdf
     ? "relative aspect-[4/5] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm"
     : "relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm";
 
@@ -32,13 +33,13 @@ export default function ArchiveCard({ item, onClick }: ArchiveCardProps) {
     >
       {/* Sleek aspect container with deep gradient cover */}
       <div className={containerClass}>
-        {!item.imageUrl ? (
-          <div className="h-full w-full bg-zinc-50 dark:bg-zinc-950/40 flex flex-col items-center justify-center p-6 text-center select-none">
-            <div className="p-2.5 bg-zinc-200/40 dark:bg-zinc-900 rounded-lg text-zinc-400 dark:text-zinc-600 mb-2">
+        {isEvicted ? (
+          <div className="h-full w-full bg-zinc-50 dark:bg-zinc-950/40 flex flex-col items-center justify-center p-6 text-center select-none animate-pulse">
+            <div className="p-2.5 bg-zinc-200/40 dark:bg-zinc-900 rounded-lg text-zinc-400 dark:text-zinc-650/80 mb-2">
               <FileText className="h-5 w-5" />
             </div>
-            <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold">
-              기록 사진 외부 배제됨
+            <span className="font-mono text-[9px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold px-2 line-clamp-2">
+              {!item.imageUrl ? '기록 사진 배제됨' : '이미지 오프라인 캐시 해제됨'}
             </span>
           </div>
         ) : isPdf ? (

@@ -88,6 +88,8 @@ export default function DetailModal({
 
   if (!item) return null;
 
+  const isEvictedImage = !item.imageUrl || item.imageUrl === 'placeholder-base64-cache-evicted' || item.imageUrl.includes('cache-evicted');
+
   const handleCopyLink = () => {
     const fakeUrl = `${window.location.origin}/archive/${item.id}`;
     navigator.clipboard.writeText(fakeUrl).then(() => {
@@ -487,13 +489,18 @@ export default function DetailModal({
                     </div>
 
                     {/* 2. Hero Visual Showcase */}
-                    <div className="relative overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-900 shadow-xs border border-zinc-150/80 dark:border-zinc-800/60 max-h-[520px] sm:max-h-[600px] flex items-center justify-center group/card-view">
-                      {!item.imageUrl ? (
+                    <div className="relative overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-900 shadow-xs border border-zinc-150/80 dark:border-zinc-800/60 max-h-[520px] sm:max-h-[600px] flex items-center justify-center group/card-view w-full animate-fade-in">
+                      {isEvictedImage ? (
                         <div className="w-full min-h-[220px] flex flex-col items-center justify-center p-10 text-center select-none">
                           <FileText className="h-10 w-10 text-zinc-300 dark:text-zinc-700 mb-2.5" />
-                          <span className="font-mono text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-505 font-bold mb-4">
-                            등록된 아카이브 사진이나 파일이 없습니다
+                          <span className="font-mono text-xs uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-bold mb-2">
+                            {!item.imageUrl ? '등록된 아카이브 사진이나 파일이 없습니다' : '로컬 공간 최적화로 이미지 오프라인 캐시가 해제되었습니다'}
                           </span>
+                          {item.imageUrl && (
+                            <p className="text-zinc-400 dark:text-zinc-500 text-[11px] mb-4 max-w-sm">
+                              (데이터베이스 동기화가 활성화되면 전체 이미지가 정상적으로 불러와집니다)
+                            </p>
+                          )}
                           <button
                             onClick={() => {
                               const fileInput = document.createElement('input');

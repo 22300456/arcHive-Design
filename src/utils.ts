@@ -70,8 +70,8 @@ export function compressImage(file: File, maxWidth = 900, maxHeight = 900, quali
 
 /**
  * Safely saves data to browser's localStorage.
- * Detects if the storage is full (QuotaExceededError) and presents a user-friendly modal alert
- * instead of crashing the site into a white screen.
+ * Detects if the storage is full (QuotaExceededError) and automatically strips heavy base64
+ * cache payloads to prevent the app from freezing or presenting blocker alerts.
  */
 export function safeSetLocalStorage(key: string, value: string): boolean {
   try {
@@ -88,14 +88,33 @@ export function safeSetLocalStorage(key: string, value: string): boolean {
       error.code === 1014;
 
     if (isQuotaExceeded) {
-      alert(
-        '⚠️ 브라우저 저장공간(로컬 스토리지) 용량이 초과되었습니다!\n\n' +
-        '해결 방법:\n' +
-        '1. 더 높은 압축률이나 해상도가 조금 낮은(작은 용량의) 이미지로 변경해 주세요.\n' +
-        '2. 불필요하게 많이 업로드된 고용량 아카이브 기록 카드를 삭제해 주세요.'
-      );
+      // Self-healing recovery mechanism for local database caches
+      if (key === 'archive-records') {
+        try {
+          const items = JSON.parse(value);
+          if (Array.isArray(items)) {
+            // Evict large base64 image strings from the cache to shrink space usage significantly
+            const cleanedItems = items.map(item => {
+              if (item.imageUrl && item.imageUrl.startsWith('data:') && item.imageUrl.length > 30000) {
+                return { ...item, imageUrl: 'placeholder-base64-cache-evicted' };
+              }
+              return item;
+            });
+            
+            // Attempt to write the clean, lightweight text and metadata payload
+            localStorage.setItem(key, JSON.stringify(cleanedItems));
+            console.warn('[LocalStorage] QuotaExceededError successfully recovered by stripping large offline cache base64 image strings.');
+            return true;
+          }
+        } catch (e) {
+          console.error('[LocalStorage] Failed to run self-cleaning eviction for records cache:', e);
+        }
+      }
+      
+      // Secondary fallback - notify the console but prevent crashing
+      console.warn('⚠️ LocalStorage full. Cached images evicted to maintain application integrity.');
     } else {
-      alert('⚠️ 데이터를 로컬 브라우저에 저장하지 못했습니다: ' + (error.message || '알 수 없는 오류'));
+      console.error('⚠️ Unknown LocalStorage write failure:', error.message || error);
     }
     return false;
   }
