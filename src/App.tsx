@@ -449,10 +449,10 @@ export default function App() {
               className="border-l-2 border-zinc-900 dark:border-zinc-100 pl-5 py-2 max-w-2xl"
             >
               <h2 className="font-serif text-3xl font-extrabold tracking-tight sm:text-4xl text-zinc-900 dark:text-white leading-tight">
-                사물과 영감의 영속적 기록
+                2026 Graphic Design
               </h2>
               <p className="mt-2.5 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                건축적 유산, 일상 도구, 기술적 기재, 영적 풍경 속에서 가려 뽑은 미학적 편린들을 한자리에 보관합니다. 카드를 클릭해 깊은 비하인드 스토리와 지향점을 읽어보세요.
+                This is an archive of Graphic Design Posters made by Joohyung H. Oh. All the work has been done during the Lecture '2026 Graphic Design' by Professor Yena Park.
               </p>
             </motion.div>
           </div>
